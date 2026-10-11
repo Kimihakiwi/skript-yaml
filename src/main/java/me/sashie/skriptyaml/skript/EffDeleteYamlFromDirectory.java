@@ -20,6 +20,8 @@ import org.bukkit.event.Event;
 
 import javax.annotation.Nullable;
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 
 @Name("Delete all YAML from one or more directories")
 @Description("Syntax 1: Deletes all YAML files from one or more directories and removes them from memory."
@@ -61,8 +63,13 @@ public class EffDeleteYamlFromDirectory extends AsyncEffectOld {
 				}
 				YAMLProcessor yaml = SkriptYaml.YAML_STORE.get(n);
 				if (yaml != null) {
-					yaml.getFile().delete();
-					SkriptYaml.YAML_STORE.remove(n);
+					try {
+						if (!yaml.getFile().getCanonicalFile().equals(yamlFile.getCanonicalFile())) continue;
+						Files.deleteIfExists(yaml.getFile().toPath());
+						SkriptYaml.YAML_STORE.remove(n, yaml);
+					} catch (IOException e) {
+						SkriptYaml.warn("Failed to delete yaml '" + n + "': " + e.getMessage());
+					}
 				}
 			}
 		}
