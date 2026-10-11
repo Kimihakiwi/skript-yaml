@@ -34,7 +34,8 @@ import org.yaml.snakeyaml.reader.UnicodeReader;
 import org.yaml.snakeyaml.representer.Representer;
 
 import java.io.*;
-import java.lang.reflect.Field;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.*;
 import java.util.*;
 import java.util.Map.Entry;
 
@@ -76,6 +77,7 @@ public class YAMLProcessor extends YAMLNode {
 	private static final String COMMENT_PREFIX = "# ";
 	private static final String HEADER_PREFIX = "## ";
 	protected final Yaml yaml;
+	private final DumperOptions options;
 	protected File file;
 	protected String id;
 	private StringBuilder builder;
@@ -96,7 +98,7 @@ public class YAMLProcessor extends YAMLNode {
 		super(new LinkedHashMap<String, Object>(), writeDefaults);
 		this.format = format;
 
-		DumperOptions options = new FancyDumperOptions();
+		options = new FancyDumperOptions();
 		options.setIndent(4);
 		options.setDefaultFlowStyle(format.getStyle());
 		options.setTimeZone(TimeZone.getDefault());
@@ -170,9 +172,10 @@ public class YAMLProcessor extends YAMLNode {
 			//read(yaml.load(input));
 			markUnmodified(); // Reset modified flag after successful load
 		} catch (ConstructorException e) {
-			SkriptYaml.error("[Load Yaml] Snakeyaml " + e.getProblem() + " in file '" + file.getAbsolutePath() + "' (possible loss of data)");
-		} catch (YAMLProcessorException e) {
-			root = new LinkedHashMap<String, Object>();
+			SkriptYaml.error("[Load Yaml] Snakeyaml " + e.getProblem() + " in file '" + file.getAbsolutePath() + "'");
+			throw new IOException("Invalid YAML: " + file.getAbsolutePath(), e);
+		} catch (YAMLProcessorException | YAMLException e) {
+			throw new IOException("Invalid YAML: " + file.getAbsolutePath(), e);
 		} finally {
 			try {
 				if (input != null)
@@ -185,6 +188,7 @@ public class YAMLProcessor extends YAMLNode {
 	}
 
 	private void buildYaml(String line) {
+		if (line == null) return;
 		builder.append(line);
 		builder.append(LINE_BREAK);
 	}
@@ -290,20 +294,15 @@ public class YAMLProcessor extends YAMLNode {
 	 *
 	 * @return true if it was successful
 	 */
-	public boolean save(boolean extraLines) {
-		OutputStream stream = null;
-
-		File parent = file.getParentFile();
-
-		if (parent != null) {
-			parent.mkdirs();
-		}
-
+	public synchronized boolean save(boolean extraLines) {
+		if (fileDeleted) return false;
+		Path target = file.toPath().toAbsolutePath();
+		Path temporary = null;
 		try {
-			stream = getOutputStream();
-			if (stream == null)
-				return false;
-			OutputStreamWriter writer = new OutputStreamWriter(stream, "UTF-8");
+			Path parent = target.getParent();
+			Files.createDirectories(parent);
+			temporary = Files.createTempFile(parent, ".skript-yaml-", ".tmp");
+			try (OutputStreamWriter writer = new OutputStreamWriter(Files.newOutputStream(temporary), StandardCharsets.UTF_8)) {
 			if (header != null) {
 				writer.append(header);
 				writer.append(LINE_BREAK);
@@ -353,19 +352,21 @@ public class YAMLProcessor extends YAMLNode {
 					yaml.dump(Collections.singletonMap(entry.getKey(), serialize(entry.getValue())), writer);
 				}
 			}
-			markUnmodified(); // Reset modified flag after successful save
-			return true;
-		} catch (IOException ex) {
-			ex.printStackTrace();
-		} finally {
+			}
 			try {
-				if (stream != null) {
-					stream.close();
-				}
-			} catch (IOException ignored) {
+				Files.move(temporary, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+			} catch (AtomicMoveNotSupportedException e) {
+				Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING);
+			}
+			markUnmodified();
+			return true;
+		} catch (IOException | RuntimeException e) {
+			SkriptYaml.warn("Failed to save yaml '" + file.getAbsolutePath() + "': " + e.getMessage());
+		} finally {
+			if (temporary != null) {
+				try { Files.deleteIfExists(temporary); } catch (IOException ignored) {}
 			}
 		}
-
 		return false;
 	}
 
@@ -592,16 +593,9 @@ public class YAMLProcessor extends YAMLNode {
 	 */
 	public void setIndent(int indent) {
 		try {
-			Field dumperOptions = yaml.getClass().getDeclaredField("dumperOptions");
-			dumperOptions.setAccessible(true);
-			DumperOptions dump = (DumperOptions) dumperOptions.get(yaml);
-			try {
-				dump.setIndent(indent);
-			} catch (YAMLException ex) {
-				SkriptYaml.warn(ex.getMessage());
-			}
-		} catch (IllegalArgumentException | IllegalAccessException | NoSuchFieldException | SecurityException e) {
-			e.printStackTrace();
+			options.setIndent(indent);
+		} catch (YAMLException e) {
+			SkriptYaml.warn(e.getMessage());
 		}
 	}
 
