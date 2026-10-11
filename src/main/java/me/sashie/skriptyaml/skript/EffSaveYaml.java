@@ -60,9 +60,9 @@ public class EffSaveYaml extends Effect {
 				}
 
 				if (yamlIndent != null)
-					yaml.setIndent(this.yamlIndent.getSingle(event).intValue());
+					{ Number indent = this.yamlIndent.getSingle(event); if (indent != null) yaml.setIndent(indent.intValue()); }
 				try {
-					boolean saved = yaml.save(this.mark == 1 ? false : true);
+					boolean saved = yaml.save((mark & 1) == 0);
 					if (!saved) {
 						SkriptYaml.warn("Failed to save yaml '" + name + "' " + skriptNode.toString());
 					}
@@ -85,15 +85,15 @@ public class EffSaveYaml extends Effect {
 
 				try {
 					// Temporarily reassign the file path
-					File targetFile = SkriptYamlUtils.getFile(targetPath, mark == 1);
+					File targetFile = SkriptYamlUtils.getFile(targetPath, (mark & 1) != 0);
 					yaml.reassignFile(targetFile);
 
 					// Set indentation if specified
 					if (yamlIndent != null)
-						yaml.setIndent(this.yamlIndent.getSingle(event).intValue());
+						{ Number indent = this.yamlIndent.getSingle(event); if (indent != null) yaml.setIndent(indent.intValue()); }
 
 					// Save to the new location
-					saved = yaml.save(this.mark == 2 ? false : true);
+					saved = yaml.save((mark & 2) == 0);
 					if (!saved) {
 						SkriptYaml.warn("Failed to save yaml '" + name + "' to '" + targetPath + "' " + skriptNode.toString());
 					} else if (wasDeleted) {
