@@ -57,14 +57,14 @@ public class EffLoadYamlDirectory extends Effect {
 				YAMLProcessor yaml = new YAMLProcessor(yamlFile, false, YAMLFormat.EXTENDED);
 				try {
 					yaml.load();
-				} catch (IOException e) {
-					e.printStackTrace();
-				} finally {
-					if (matchedPattern == 1)
+				} catch (IOException | RuntimeException e) {
+					SkriptYaml.warn("[Load Yaml] " + yamlFile.getAbsolutePath() + ": " + e.getMessage());
+					continue;
+				}
+				if (matchedPattern == 1)
 						SkriptYaml.YAML_STORE.put(StringUtil.stripExtention(yamlFile.getName()), yaml);
 					else
 						SkriptYaml.YAML_STORE.put(StringUtil.checkLastSeparator(name) + yamlFile.getName(), yaml);
-				}
 			}
 		}
 	}
