@@ -381,13 +381,15 @@ public class YAMLProcessor extends YAMLNode {
 	@SuppressWarnings("unchecked")
 	private Object serialize(Object value) {
 		if (value instanceof Map) {
-			for(Entry<String, Object> entry : ((Map<String, Object>) value).entrySet())
-				((Map<String, Object>) value).replace(entry.getKey(), entry.getValue(), serialize(entry.getValue()));
-			return value;
+			Map<String, Object> copy = new LinkedHashMap<>();
+			for (Entry<String, Object> entry : ((Map<String, Object>) value).entrySet())
+				copy.put(entry.getKey(), serialize(entry.getValue()));
+			return copy;
 		} else if (value instanceof List) {
-			for (int i = 0; i < ((List<Object>) value).size(); i++)
-				((List<Object>) value).set(i, serialize(((List<Object>) value).get(i)));
-			return value;
+			List<Object> copy = new ArrayList<>(((List<?>) value).size());
+			for (Object element : (List<Object>) value)
+				copy.add(serialize(element));
+			return copy;
 		} else if (!(SkriptYamlRepresenter.contains(value) || value instanceof ConfigurationSerializable || value instanceof Number || value instanceof BlockData || value instanceof Map || value instanceof List)) {
 			SerializedVariable.Value val = Classes.serialize(value);
 			if (val == null)
