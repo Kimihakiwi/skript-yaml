@@ -1,0 +1,9 @@
+command /yamlcheck:
+    permission: skriptyaml.test
+    trigger:
+        load yaml "plugins/skript-yaml/compatibility.yml" as "compat"
+        set yaml value "player.level" from "compat" to 10
+        set {_level} to yaml value "player.level" from "compat"
+        send "YAML level: %{_level}%" to player
+        save yaml "compat"
+        unload yaml "compat"
