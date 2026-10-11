@@ -32,17 +32,16 @@ public class SkriptYamlRepresenter extends Representer {
 	private static Method representMappingMethod;
 	private static Method representScalarMethod;
 
-	static {		
-		if (SkriptYaml.getInstance().getServerVersion() <= 12) {
-			try {
-				Class<?> baseRepresenterClass = BaseRepresenter.class;
-				representMappingMethod = baseRepresenterClass.getDeclaredMethod("representMapping", Tag.class, Map.class, Boolean.class);
-				representMappingMethod.setAccessible(true);
-				representScalarMethod = baseRepresenterClass.getDeclaredMethod("representScalar", Tag.class, String.class, Character.class);
-				representScalarMethod.setAccessible(true);
-			} catch (SecurityException | NoSuchMethodException e) {
-				e.printStackTrace();
-			}
+	static {
+		try {
+			Class<?> base = BaseRepresenter.class;
+			representMappingMethod = base.getDeclaredMethod("representMapping", Tag.class, Map.class, Boolean.class);
+			representScalarMethod = base.getDeclaredMethod("representScalar", Tag.class, String.class, Character.class);
+			representMappingMethod.setAccessible(true);
+			representScalarMethod.setAccessible(true);
+		} catch (ReflectiveOperationException | RuntimeException ignored) {
+			representMappingMethod = null;
+			representScalarMethod = null;
 		}
 	}
 
@@ -121,14 +120,14 @@ public class SkriptYamlRepresenter extends Representer {
 
 	private Node representScalar(Object data) {
 		if (data instanceof String && data.toString().contains("&")) {	//fixing a bug with color codes not working sometimes
-			if (SkriptYaml.getInstance().getServerVersion() >= 13) {
+			if (representScalarMethod == null) {
 				return representScalar(Tag.STR, data.toString(), DumperOptions.ScalarStyle.DOUBLE_QUOTED);
 			} else {
 				Node node = null;
 				try {
 					node = (Node) representScalarMethod.invoke(this, Tag.STR, data.toString(), '"');
 				} catch (SecurityException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
-					e.printStackTrace();
+					return representScalar(Tag.STR, data.toString(), DumperOptions.ScalarStyle.DOUBLE_QUOTED);
 				}
 				return node;
 			}
@@ -217,14 +216,14 @@ public class SkriptYamlRepresenter extends Representer {
 	 */
 	@SuppressWarnings({ "unchecked" })
 	public <T> T representMapping(Tag tag, Map<?, ?> mapping) {
-		if (SkriptYaml.getInstance().getServerVersion() >= 13) {
+		if (representMappingMethod == null) {
 			return (T) representMapping(tag, mapping, FlowStyle.BLOCK);
 		} else {
 			T node = null;
 			try {
 				node = (T) representMappingMethod.invoke(this, tag, mapping, null);
 			} catch (SecurityException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
-				e.printStackTrace();
+				return (T) representMapping(tag, mapping, FlowStyle.BLOCK);
 			}
 			return (T) node;
 		}
