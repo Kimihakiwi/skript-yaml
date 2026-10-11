@@ -15,6 +15,8 @@ import me.sashie.skriptyaml.utils.yaml.YAMLProcessor;
 import org.bukkit.event.Event;
 
 import javax.annotation.Nullable;
+import java.io.IOException;
+import java.nio.file.Files;
 
 @Name("Delete YAML")
 @Description("Deletes a YAML file and optionally removes it from memory.\n" +
@@ -39,7 +41,12 @@ public class EffDeleteYaml extends Effect {
 			YAMLProcessor yaml = SkriptYaml.YAML_STORE.get(name);
 			if (yaml == null)
 				continue;
-			yaml.getFile().delete();
+			try {
+				Files.deleteIfExists(yaml.getFile().toPath());
+			} catch (IOException e) {
+				SkriptYaml.warn("Failed to delete yaml '" + name + "': " + e.getMessage());
+				continue;
+			}
 			if (keepLoaded) {
 				yaml.markFileDeleted();
 			} else {
