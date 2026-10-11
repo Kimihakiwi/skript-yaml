@@ -51,8 +51,8 @@ public class YAMLAPI {
 				File folder;
 				String filePath = file.getPath();
 				int index = filePath.lastIndexOf(File.separator);
-				folder = new File(filePath.substring(0, index));
-				if (index >= 0 && !folder.exists()) {
+				folder = index >= 0 ? new File(filePath.substring(0, index)) : null;
+				if (folder != null && !folder.exists()) {
 					folder.mkdirs();
 				}
 				file.createNewFile();
@@ -66,12 +66,11 @@ public class YAMLAPI {
 
 		try {
 			yaml.load();
-		} catch (IOException e) {
-			e.printStackTrace();
-		} finally {
-			SkriptYaml.YAML_STORE.put(id, yaml);
+		} catch (IOException | RuntimeException e) {
+			SkriptYaml.error("[Load Yaml] " + file.getAbsolutePath() + ": " + e.getMessage());
+			return false;
 		}
-
+		SkriptYaml.YAML_STORE.put(id, yaml);
 		return true;
 	}
 
@@ -100,19 +99,20 @@ public class YAMLAPI {
 			}
 		});
 
+		if (files == null) return;
 		for (File yamlFile : files) {
 			YAMLProcessor yaml = new YAMLProcessor(yamlFile, false, YAMLFormat.EXTENDED);
 
 			try {
 				yaml.load();
-			} catch (IOException e) {
-				e.printStackTrace();
-			} finally {
-				if (useFileAsID) {
+			} catch (IOException | RuntimeException e) {
+				SkriptYaml.warn("[Load Yaml] " + yamlFile.getAbsolutePath() + ": " + e.getMessage());
+				continue;
+			}
+			if (useFileAsID) {
 					SkriptYaml.YAML_STORE.put(StringUtil.stripExtention(yamlFile.getName()), yaml);
 				} else {
 					SkriptYaml.YAML_STORE.put(StringUtil.checkLastSeparator(name) + yamlFile.getName(), yaml);
-				}
 			}
 		}
 	}
