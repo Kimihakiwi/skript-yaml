@@ -84,7 +84,7 @@ public class SkriptYamlUtils {
 
 	public static Object convertUUIDs(Object input) {
 		if (input instanceof String) {
-			if (UUID_PATTERN.matcher((String) input).matches()) {
+			if (((String) input).length() == 36 && UUID_PATTERN.matcher((String) input).matches()) {
 				input = UUID.fromString((String) input);
 			}
 		}
