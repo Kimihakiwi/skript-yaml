@@ -68,6 +68,8 @@ public class YAMLNode {
 	 */
 	public void clear() {
 		root.clear();
+		allKeys.clear();
+		markModified();
 	}
 
 	/**
@@ -136,10 +138,12 @@ public class YAMLNode {
 
 		String[] parts = path.split("\\.");
 		Map<String, Object> node = root;
+		StringBuilder prefix = new StringBuilder(path.length());
 
 		for (int i = 0; i < parts.length; i++) {
-			String[] prevPathParts = Arrays.copyOf(parts, i + 1);
-			String prevPath = StringUtil.joinString(prevPathParts, ".");
+			if (i > 0) prefix.append('.');
+			prefix.append(parts[i]);
+			String prevPath = prefix.toString();
 
 			if (!allKeys.contains(prevPath))
 				allKeys.add(prevPath);
@@ -745,7 +749,7 @@ public class YAMLNode {
 		if (allKeys.contains(path))
 			allKeys.remove(path);
 		for (int i = allKeys.size() - 1; i >= 0; i--) {
-			if (allKeys.get(i).contains(path + "."))
+			if (allKeys.get(i).startsWith(path + "."))
 				allKeys.remove(i);
 		}
 
